@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>货车月度成本测算系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .form-input-focus {
+                @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none;
+            }
+            .card-shadow {
+                @apply shadow-md rounded-lg p-6 bg-white;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">货车月度成本测算系统</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- 基础参数输入区 -->
+            <div class="lg:col-span-1 card-shadow">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">基础参数设置</h2>
+                <form id="costForm" class="space-y-4">
+                    <!-- 车辆基础信息 -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">车辆信息</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-sm text-gray-700">核定载重（吨）</label>
+                                <input type="number" id="loadCapacity" class="w-full px-3 py-2 border rounded-md form-input-focus" value="15" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">月度行驶里程（公里）</label>
+                                <input type="number" id="monthlyMileage" class="w-full px-3 py-2 border rounded-md form-input-focus" value="8000" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">百公里油耗（升）</label>
+                                <input type="number" id="fuelConsumption" class="w-full px-3 py-2 border rounded-md form-input-focus" value="30" min="0" step="0.1">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">柴油单价（元/升）</label>
+                                <input type="number" id="fuelPrice" class="w-full px-3 py-2 border rounded-md form-input-focus" value="7.5" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 固定成本 -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">固定成本（元/月）</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-sm text-gray-700">车辆租金/折旧</label>
+                                <input type="number" id="vehicleRent" class="w-full px-3 py-2 border rounded-md form-input-focus" value="8000" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">保险费用</label>
+                                <input type="number" id="insuranceFee" class="w-full px-3 py-2 border rounded-md form-input-focus" value="1500" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">管理费用</label>
+                                <input type="number" id="managementFee" class="w-full px-3 py-2 border rounded-md form-input-focus" value="800" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">司机固定工资</label>
+                                <input type="number" id="driverFixedSalary" class="w-full px-3 py-2 border rounded-md form-input-focus" value="6000" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 变动成本 -->
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">变动成本参数</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-sm text-gray-700">过路费（元/公里）</label>
+                                <input type="number" id="tollFeePerKm" class="w-full px-3 py-2 border rounded-md form-input-focus" value="1.2" min="0" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">维修保养费（元/公里）</label>
+                                <input type="number" id="maintenancePerKm" class="w-full px-3 py-2 border rounded-md form-input-focus" value="0.8" min="0" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">司机绩效/补贴（元/公里）</label>
+                                <input type="number" id="driverBonusPerKm" class="w-full px-3 py-2 border rounded-md form-input-focus" value="0.5" min="0" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700">轮胎损耗（元/公里）</label>
+                                <input type="number" id="tireCostPerKm" class="w-full px-3 py-2 border rounded-md form-input-focus" value="0.3" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="calculateBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                        计算成本
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 计算结果展示区 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 成本汇总表格 -->
+            <div class="card-shadow">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">成本测算结果</h2>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border p-3 text-left">成本类型</th>
+                            <th class="border p-3 text-right">金额（元）</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border p-3 font-medium">固定成本</td>
+                            <td class="border p-3 text-right" id="fixedCostResult">0.00</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border p-3 font-medium">变动成本</td>
+                            <td class="border p-3 text-right" id="variableCostResult">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="border p-3 font-bold text-lg">总成本</td>
+                            <td class="border p-3 text-right font-bold text-lg" id="totalCostResult">0.00</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border p-3 font-medium">单位成本（元/吨公里）</td>
+                            <td class="border p-3 text-right font-medium" id="unitCostResult">0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="mt-6 text-sm text-gray-500">
+                    <p>注：单位成本基于 <strong>80%</strong> 装载率计算，计算公式：</p>
+                    <p class="mt-1">单位成本 = 总成本 ÷ (月度行驶里程 × 核定载重 × 80%)</p>
+                </div>
+            </div>
+
+            <!-- 成本构成图表 -->
+            <div class="card-shadow">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">成本构成分析</h2>
+                <div class="h-80">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化图表
+        let costChart;
+        function initChart(labels, data) {
+            const ctx = document.getElementById('costChart').getContext('2d');
+            
+            // 销毁已有图表
+            if (costChart) {
+                costChart.destroy();
+            }
+
+            costChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '成本构成',
+                        data: data,
+                        backgroundColor: [
+                            '#3b82f6', // 固定成本-蓝色
+                            '#10b981', // 变动成本-绿色
+                            '#f59e0b', // 燃油费-黄色
+                            '#6366f1', // 过路费-紫色
+                            '#ec4899', // 维修保养-粉色
+                            '#8b5cf6', // 司机绩效-浅紫
+                            '#ef4444', // 轮胎损耗-红色
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(2);
+                                    return `${label}: ¥${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 计算成本函数
+        function calculateCost() {
+            // 获取输入值
+            const loadCapacity = parseFloat(document.getElementById('loadCapacity').value) || 0;
+            const monthlyMileage = parseFloat(document.getElementById('monthlyMileage').value) || 0;
+            const fuelConsumption = parseFloat(document.getElementById('fuelConsumption').value) || 0;
+            const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
+            
+            // 固定成本
+            const vehicleRent = parseFloat(document.getElementById('vehicleRent').value) || 0;
+            const insuranceFee = parseFloat(document.getElementById('insuranceFee').value) || 0;
+            const managementFee = parseFloat(document.getElementById('managementFee').value) || 0;
+            const driverFixedSalary = parseFloat(document.getElementById('driverFixedSalary').value) || 0;
+            
+            // 变动成本参数
+            const tollFeePerKm = parseFloat(document.getElementById('tollFeePerKm').value) || 0;
+            const maintenancePerKm = parseFloat(document.getElementById('maintenancePerKm').value) || 0;
+            const driverBonusPerKm = parseFloat(document.getElementById('driverBonusPerKm').value) || 0;
+            const tireCostPerKm = parseFloat(document.getElementById('tireCostPerKm').value) || 0;
+
+            // 计算固定成本总和
+            const fixedCost = vehicleRent + insuranceFee + managementFee + driverFixedSalary;
+
+            // 计算各项变动成本
+            const fuelCost = (monthlyMileage / 100) * fuelConsumption * fuelPrice; // 燃油费
+            const tollFee = monthlyMileage * tollFeePerKm; // 过路费
+            const maintenanceFee = monthlyMileage * maintenancePerKm; // 维修保养费
+            const driverBonus = monthlyMileage * driverBonusPerKm; // 司机绩效
+            const tireCost = monthlyMileage * tireCostPerKm; // 轮胎损耗
+
+            // 变动成本总和
+            const variableCost = fuelCost + tollFee + maintenanceFee + driverBonus + tireCost;
+
+            // 总成本
+            const totalCost = fixedCost + variableCost;
+
+            // 单位成本（80%装载率）
+            const loadRate = 0.8; // 80%装载率
+            const effectiveLoad = loadCapacity * loadRate; // 有效载重
+            const unitCost = monthlyMileage > 0 && effectiveLoad > 0 
+                ? totalCost / (monthlyMileage * effectiveLoad) 
+                : 0;
+
+            // 更新结果显示
+            document.getElementById('fixedCostResult').textContent = fixedCost.toFixed(2);
+            document.getElementById('variableCostResult').textContent = variableCost.toFixed(2);
+            document.getElementById('totalCostResult').textContent = totalCost.toFixed(2);
+            document.getElementById('unitCostResult').textContent = unitCost.toFixed(4);
+
+            // 更新图表
+            const chartLabels = [
+                '固定成本', 
+                '燃油费', 
+                '过路费', 
+                '维修保养费', 
+                '司机绩效', 
+                '轮胎损耗'
+            ];
+            const chartData = [
+                fixedCost, 
+                fuelCost, 
+                tollFee, 
+                maintenanceFee, 
+                driverBonus, 
+                tireCost
+            ];
+            initChart(chartLabels, chartData);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始计算
+            calculateCost();
+            
+            // 绑定计算按钮事件
+            document.getElementById('calculateBtn').addEventListener('click', calculateCost);
+            
+            // 输入框实时计算（可选）
+            const inputElements = document.querySelectorAll('input');
+            inputElements.forEach(input => {
+                input.addEventListener('change', calculateCost);
+            });
+        });
+    </script>
+</body>
+</html>
